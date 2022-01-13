@@ -205,6 +205,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Config\PocColorModGroupEntry.cs" />
     <Compile Include="Config\PocColorModConfigColorEntry.cs" />
     <Compile Include="Log.cs" />
     <Compile Include="Config\Map.cs" />
