@@ -12,13 +12,14 @@ using TaleWorlds.CampaignSystem;
 using TaleWorlds.Core;
 using TaleWorlds.Library;
 using TaleWorlds.MountAndBlade;
+using psai.Editor;
 
 namespace PocColor
 {
     public class PocColorMod : MBSubModuleBase
     {
 
-        public const string MOD_VERSION = "1.0.19";
+        public const string MOD_VERSION = "1.0.38";
 
         public static PocColorModConfig config { get; set; }
 
@@ -26,6 +27,7 @@ namespace PocColor
 
         public static Map<string, string> bannerClanCache { get; set; }
 
+        public static Boolean doLog = false;
 
         public static string SerializeBanner(Banner banner)
         {
@@ -92,11 +94,12 @@ namespace PocColor
 
         public override void OnGameInitializationFinished(Game game)
         {
-            bool follow = false;
+            bool follow = false, followBG = false;
             string kingdomBannerStr = null;
+            string kingdomShieldStr = null;
             string primary = null;
             string secondary = null;
-            string clanBanner = null;
+            string clanBanner = null, clanShield = null;
 
             Map<string, string> bannerKingdomCacheTmp = new Map<string, string>();
             Map<string, string> bannerClanCacheTmp = new Map<string, string>();
@@ -108,6 +111,7 @@ namespace PocColor
 
                 Log.write("read config file");
                 PocColorMod.config = JsonConvert.DeserializeObject<PocColorModConfig>(File.ReadAllText(@"..\..\modules\PocColor\config.json"));
+                PocColorMod.config.parseGroups();
             }
             catch (FileNotFoundException e)
             {
@@ -118,6 +122,7 @@ namespace PocColor
                 Log.write("Could not parse the config file :(");
                 Log.write(" =====>" + e.Message);
             }
+            PocColorMod.doLog = PocColorMod.config.log;
 
             Log.write("Build Cache -- start");
 
@@ -125,73 +130,90 @@ namespace PocColor
             {
 
                 for (int i = 0; i< Campaign.Current.Kingdoms.Count; i++)
-            {
-                Kingdom kingdom = Campaign.Current.Kingdoms[i];
-
-                //Get Kingdom Banner And Set It
-                string playerKingdomName = Clan.PlayerClan?.Kingdom?.Name?.ToString();
-                bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom.Name?.ToString() == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
-
-                (kingdomBannerStr, primary, secondary) = PocColorMod.config.GetKingdomConfig(kingdom.Name?.ToString(), isPlayerKingdom);
-                
-                
-                if (primary is object)
                 {
+                    Kingdom kingdom = Campaign.Current.Kingdoms[i];
 
-                    uint color1 = PocColorModSetColors.parseColor(primary);
+                    Log.write("====> kingdom [" + kingdom.Name.ToString() + "]");
+
+                    //Get Kingdom Banner And Set It
+                    string playerKingdomName = Clan.PlayerClan?.Kingdom?.Name?.ToString();
+                    bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom.Name?.ToString() == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
+
+                    (kingdomBannerStr, kingdomShieldStr, primary, secondary) = PocColorMod.config.GetKingdomConfig(kingdom.Name?.ToString(), isPlayerKingdom);
+
+                    //Add Original Kingdom banner in cache
+                    String bannerStr = PocColorMod.SerializeBanner(kingdom.Banner);
+                    bannerKingdomCacheTmp.TryAdd(bannerStr, kingdom.Name.ToString());
+                    //Add Ruling clan Banner
+                    bannerClanCacheTmp.TryAdd(bannerStr, kingdom.RulingClan?.Name.ToString());
+                    if (PocColorMod.doLog) Log.write("> Initial Kingdom Banner loaded from game: [" + bannerStr + "]");
+                    if (PocColorMod.doLog) Log.write("> Initial Kingdom primary color loaded from game: [" + BannerManager.GetColorId(kingdom.PrimaryBannerColor) + "]");
+                    if (PocColorMod.doLog) Log.write("> Initial Kingdom secondary color loaded from game: [" + BannerManager.GetColorId(kingdom.SecondaryBannerColor) + "]");
+
+                    if (primary is object)
+                    {
+                        //Update Kingdom Primary Color
+                        uint color1 = PocColorModSetColors.parseColor(primary);
                     
-                    FieldInfo fi = typeof(Kingdom).GetField("<PrimaryBannerColor>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-                    TypedReference reference = __makeref(kingdom);
-                    fi.SetValueDirect(reference, color1);
+                        FieldInfo fi = typeof(Kingdom).GetField("<PrimaryBannerColor>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+                        TypedReference reference = __makeref(kingdom);
+                        fi.SetValueDirect(reference, color1);
 
-                    FieldInfo fi2 = typeof(Kingdom).GetField("<Color>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-                    TypedReference reference2 = __makeref(kingdom);
-                    fi2.SetValueDirect(reference2, color1);
+                        FieldInfo fi2 = typeof(Kingdom).GetField("<Color>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+                        TypedReference reference2 = __makeref(kingdom);
+                        fi2.SetValueDirect(reference2, color1);
 
-                    kingdom.Banner?.ChangePrimaryColor(color1);
+                        //Update Kingdom Banner
+                        if (PocColorMod.doLog)  Log.write("> updating primaryColor for kingdom: [" + PocColorMod.SerializeBanner(kingdom.Banner) + "]");
+                        kingdom.Banner?.ChangePrimaryColor(color1);
+                        if (PocColorMod.doLog)  Log.write("> updated Banner: [" + PocColorMod.SerializeBanner(kingdom.Banner) + "]");
+                    }
 
-                }
-
-                if (secondary is object)
-                {
-
-                    uint color2 = PocColorModSetColors.parseColor(secondary);
+                    if (secondary is object)
+                    {
+                        //Update Kingdom Secondary Color
+                        uint color2 = PocColorModSetColors.parseColor(secondary);
                     
-                    FieldInfo fi = typeof(Kingdom).GetField("<SecondaryBannerColor>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-                    TypedReference reference = __makeref(kingdom);
-                    fi.SetValueDirect(reference, color2);
+                        FieldInfo fi = typeof(Kingdom).GetField("<SecondaryBannerColor>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+                        TypedReference reference = __makeref(kingdom);
+                        fi.SetValueDirect(reference, color2);
 
-                    FieldInfo fi2 = typeof(Kingdom).GetField("<Color2>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-                    TypedReference reference2 = __makeref(kingdom);
-                    fi2.SetValueDirect(reference2, color2);
+                        FieldInfo fi2 = typeof(Kingdom).GetField("<Color2>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+                        TypedReference reference2 = __makeref(kingdom);
+                        fi2.SetValueDirect(reference2, color2);
 
-                    kingdom.Banner?.ChangeIconColors(color2);
-                }
+                        //Update Kingdom Banner
+                        if (PocColorMod.doLog)  Log.write("> updating SecondaryColor for kingdom: [" + PocColorMod.SerializeBanner(kingdom.Banner) + "]");
+                        kingdom.Banner?.ChangeIconColors(color2);
+                        if (PocColorMod.doLog)  Log.write("> updated Banner: [" + PocColorMod.SerializeBanner(kingdom.Banner) + "]");
+                    }
 
-                if (kingdomBannerStr is object)
-                {
-                    //override banner
-                    Log.write("> updating banner for kingdom: [" + kingdom.Name.ToString() + ", " + kingdomBannerStr + "]");
-                    Banner kingdomBanner = new Banner(kingdomBannerStr);
+                    if (kingdomBannerStr is object)
+                    {
+                        //override banner
+                        if (PocColorMod.doLog) Log.write("> updating banner for kingdom: [" + kingdom.Name.ToString() + ", " + kingdomBannerStr + "]");
+                        Banner kingdomBanner = new Banner(kingdomBannerStr);
 
-                    //Traverse.Create(kingdom).Field("Banner").SetValue(kingdomBanner);
-                    FieldInfo fi = typeof(Kingdom).GetField("<Banner>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-                    TypedReference reference = __makeref(kingdom);
-                    fi.SetValueDirect(reference, kingdomBanner);
-                }
+                        //Traverse.Create(kingdom).Field("Banner").SetValue(kingdomBanner);
+                        FieldInfo fi = typeof(Kingdom).GetField("<Banner>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+                        TypedReference reference = __makeref(kingdom);
+                        fi.SetValueDirect(reference, kingdomBanner);
+                        if (PocColorMod.doLog)  Log.write("> updated KingdomBanner from Config: [" + PocColorMod.SerializeBanner(kingdom.Banner) + "]");
+                    }
 
-                kingdomBannerStr = PocColorMod.SerializeBanner(kingdom.Banner);
-                Log.write("> adding new cache for banner: [" + kingdomBannerStr + "]");
-                Log.write("====> kingdom [" + kingdom.Name.ToString() + "]");
+                    kingdomBannerStr = PocColorMod.SerializeBanner(kingdom.Banner);
+                    Log.write("> adding new cache for banner: [" + kingdomBannerStr + "]");
+                    
+                    bannerKingdomCacheTmp.TryAdd(kingdomBannerStr, kingdom.Name.ToString());
+                    bannerClanCacheTmp.TryAdd(kingdomBannerStr, kingdom.RulingClan?.Name.ToString());
 
-                bannerKingdomCacheTmp.TryAdd(kingdomBannerStr, kingdom.Name.ToString());
-
-                foreach (Clan clan in kingdom.Clans)
-                {
+                    foreach (Clan clan in kingdom.Clans)
+                    {
 
                     try
                     {
-                        
+                         Log.write("====> kingdom [" + kingdom.Name.ToString() + "]" + ", clan [" + clan.Name.ToString() + "]");
+
                         //Get Clan Banner: if defined, override it. 
                         string playerClanName = Clan.PlayerClan?.Name?.ToString();
                         playerKingdomName = Clan.PlayerClan?.Kingdom?.Name?.ToString();
@@ -200,61 +222,72 @@ namespace PocColor
                         isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom.Name?.ToString() == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
 
                         Log.write("> clan: [" + clan.Name?.ToString() + "] kingdom: " + kingdom.Name?.ToString() + ", isplayerKingdom: " + isPlayerKingdom + ", isPlayerClan:" + isPlayerClan);
-                        (follow, clanBanner, primary, secondary) = PocColorMod.config.GetClanConfig(kingdom.Name?.ToString(), clan.Name?.ToString(), isPlayerKingdom, isPlayerClan);
+                        (follow, followBG, clanBanner, clanShield, primary, secondary) = PocColorMod.config.GetClanConfig(kingdom.Name?.ToString(), clan.Name?.ToString(), isPlayerKingdom, isPlayerClan);
                         Log.write("> clan: [" + clan.Name?.ToString() + "] follow colors: "+ follow + ", primary: " + primary + ", secondary:" + secondary );
 
-                        if (follow && kingdom is object)
-                        {
-                            Traverse.Create(clan).Field("Color").SetValue(kingdom.PrimaryBannerColor);
-                            Traverse.Create(clan).Field("Color2").SetValue(kingdom.SecondaryBannerColor);
-                        }
+                        if (PocColorMod.doLog) Log.write("> Initial clan Banner loaded from game: [" + PocColorMod.SerializeBanner(clan.Banner) + "]");
+                        if (PocColorMod.doLog) Log.write("> Initial clan primary loaded from game: [" + BannerManager.GetColorId(clan.Color) + "]");
+                        if (PocColorMod.doLog) Log.write("> Initial clan secondary loaded from game: [" + BannerManager.GetColorId(clan.Color2) + "]");
 
-                        if (clanBanner is object) {
-                            //override banner
-                            Log.write("> updating banner for clan: [" + clan.Name.ToString() + ", " + clanBanner + "]");
-                            Banner banner = new Banner(clanBanner);
-                            Traverse.Create(clan).Field("_banner").SetValue(banner);
-                        }
+                            //if (follow && kingdom is object)
+                            //{
+                            //    Log.write("Follow: true; Apply kingdom colors to current Clan");
+                            //    Traverse.Create(clan).Field("Color").SetValue(kingdom.PrimaryBannerColor);
+                            //    Traverse.Create(clan).Field("Color2").SetValue(kingdom.SecondaryBannerColor);
+                            //}
 
-                        if (primary is object)
-                        {
-                            uint color1 = PocColorModSetColors.parseColor(primary);                       
-                            clan.Banner?.ChangePrimaryColor(color1);
-                        }
+                            if (clanBanner is object)
+                            {
+                                //override banner
+                                Log.write("> updating banner for clan: [" + clan.Name.ToString() + ", " + clanBanner + "]");
+                                Banner banner = new Banner(clanBanner);
+                                Traverse.Create(clan).Field("_banner").SetValue(banner);
+                            }
 
-                        if (secondary is object)
-                        {
-                            uint color2 = PocColorModSetColors.parseColor(secondary);
-                            clan.Banner?.ChangeIconColors(color2);
-                        }
+                            if (primary is object)
+                            {
+                                Log.write("> updating primary color for clan");
 
-                        if (String.IsNullOrEmpty(primary) && String.IsNullOrEmpty(secondary) && follow)
-                        {
+                                uint color1 = PocColorModSetColors.parseColor(primary);
+                                Traverse.Create(clan).Field("Color").SetValue(color1);
+                                clan.Banner?.ChangePrimaryColor(color1);
+                            }
+
+                            if (secondary is object)
+                            {
+                                Log.write("> updating secondary color for clan");
+
+                                uint color2 = PocColorModSetColors.parseColor(secondary);
+                                Traverse.Create(clan).Field("Color2").SetValue(color2);
+                                clan.Banner?.ChangeIconColors(color2);
+                            }
+
+                            if (String.IsNullOrEmpty(primary) && String.IsNullOrEmpty(secondary) && follow)
+                            {
+                                Log.write("> updating colors of clan from Kingdom");
+
                                 //Force update of colors from kingdom (default behaviour)
                                 Traverse.Create((object)clan).Method("UpdateBannerColorsAccordingToKingdom").GetValue();
+                            }
+
+                            bannerStr = PocColorMod.SerializeBanner(clan.Banner);
+
+                            Log.write("> adding new cache for banner: [" + bannerStr + "]");
+                            bannerClanCacheTmp.TryAdd(bannerStr, clan.Name.ToString());
+                            bannerKingdomCacheTmp.TryAdd(bannerStr, kingdom?.Name?.ToString());
+
                         }
-
-                        string bannerStr = PocColorMod.SerializeBanner(clan.Banner);
-                        Log.write("> adding new cache for banner: [" + bannerStr + "]");
-                        Log.write("====> kingdom [" + kingdom.Name.ToString() + "]");
-                        Log.write("====> clan [" + clan.Name.ToString() + "]");
-                        Log.write("");
-
-                        bannerClanCacheTmp.TryAdd(bannerStr, clan.Name.ToString());
-                        bannerKingdomCacheTmp.TryAdd(bannerStr, kingdom.Name.ToString());
-
-                    }
                     catch (Exception e)
                     {
                         Log.write(e.Message);
                     }
                 }
             }
-            foreach (Clan clan in Campaign.Current.Clans)
-            {
-                
-
+                foreach (Clan clan in Campaign.Current.Clans)
+                {
                     Kingdom kingdom = clan.Kingdom;
+
+                    Log.write("====> clan [" + clan.Name.ToString() + "]");
 
                     //Get Clan Banner: if defined, override it. 
                     string playerClanName = Clan.PlayerClan?.Name?.ToString();
@@ -263,16 +296,13 @@ namespace PocColor
                     bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom?.Name?.ToString() == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
 
                     Log.write("> clan: [" + clan.Name?.ToString() + "] kingdom: " + kingdom?.Name?.ToString() + ", isplayerKingdom: " + isPlayerKingdom + ", isPlayerClan:" + isPlayerClan);
+                    (follow, followBG, clanBanner, clanShield, primary, secondary) = PocColorMod.config.GetClanConfig(kingdom?.Name?.ToString(), clan.Name?.ToString(), isPlayerKingdom, isPlayerClan);
+                    Log.write("> clan: [" + clan.Name?.ToString() + "] follow: " + follow + ", follow Background: " + followBG + ", primary: " + primary + ", secondary:" + secondary);
 
-                    (follow, clanBanner, primary, secondary) = PocColorMod.config.GetClanConfig(kingdom?.Name?.ToString(), clan.Name?.ToString(), isPlayerKingdom, isPlayerClan);
+                    if (PocColorMod.doLog) Log.write("> Initial clan Banner loaded from game: [" + PocColorMod.SerializeBanner(clan.Banner) + "]");
+                    if (PocColorMod.doLog) Log.write("> Initial clan primary loaded from game: [" + BannerManager.GetColorId(clan.Color) + "]");
+                    if (PocColorMod.doLog) Log.write("> Initial clan secondary loaded from game: [" + BannerManager.GetColorId(clan.Color2) + "]");
 
-                    Log.write("> clan: [" + clan.Name?.ToString() + "] follow: " + follow + ", primary: " + primary + ", secondary:" + secondary);
-
-                    //Update clan with kingdom colors
-                    if (follow && kingdom is object) {
-                        Traverse.Create(clan).Field("Color").SetValue(kingdom.PrimaryBannerColor);
-                        Traverse.Create(clan).Field("Color2").SetValue(kingdom.SecondaryBannerColor);
-                    }
 
                     if (clanBanner is object)
                     {
@@ -284,6 +314,8 @@ namespace PocColor
 
                     if (primary is object)
                     {
+                        Log.write("> updating primary color for clan");
+
                         uint color1 = PocColorModSetColors.parseColor(primary);
                         Traverse.Create(clan).Field("Color").SetValue(color1);
                         clan.Banner?.ChangePrimaryColor(color1);
@@ -291,13 +323,17 @@ namespace PocColor
 
                     if (secondary is object)
                     {
+                        Log.write("> updating secondary color for clan");
+
                         uint color2 = PocColorModSetColors.parseColor(secondary);
                         Traverse.Create(clan).Field("Color2").SetValue(color2);
                         clan.Banner?.ChangeIconColors(color2);
                     }
 
-                    if (String.IsNullOrEmpty(primary) && String.IsNullOrEmpty(secondary) && follow)
+                    if (String.IsNullOrEmpty(primary) && String.IsNullOrEmpty(secondary) && (follow || followBG) )
                     {
+                        Log.write("> updating colors of clan from Kingdom");
+
                         //Force update of colors from kingdom (default behaviour)
                         Traverse.Create((object)clan).Method("UpdateBannerColorsAccordingToKingdom").GetValue();
                     }
@@ -305,12 +341,8 @@ namespace PocColor
                     string bannerStr = PocColorMod.SerializeBanner(clan.Banner);
                     
                     Log.write("> adding new cache for banner: [" + bannerStr + "]");
-                    Log.write("====> clan [" + clan.Name.ToString() + "]");
                     bannerClanCacheTmp.TryAdd(bannerStr, clan.Name.ToString());
                     bannerKingdomCacheTmp.TryAdd(bannerStr, kingdom?.Name?.ToString());
-
-                
-
             }
             PocColorMod.bannerClanCache = bannerClanCacheTmp;
             PocColorMod.bannerKingdomCache = bannerKingdomCacheTmp;
@@ -370,20 +402,18 @@ namespace PocColor
 
                             c.units.TryAdd(hero.Name.ToString(), u);
                         }
-                        foreach (MobileParty party in clan.AllParties)
+                        foreach (Hero hero in clan.Heroes)
                         {
-                            foreach (CharacterObject el in party.MemberRoster.Troops)
-                            {
-                                PocColorModConfigUnit u = new PocColorModConfigUnit();
-                                u.mode = 3;
-                                u.color = new string[2] { "color1", "color2" };
-                                u.color2 = new string[2] { "color1", "color2" };
-                                u.banner = "dummy banner";
-                                u.banners = new string[3] { "banner1", "banner2", "banner3" };
-                                u.shields = new string[3] { "shield1", "shield2", "shield3" };
+                            PocColorModConfigUnit u = new PocColorModConfigUnit();
+                            u.mode = 3;
+                            u.color = new string[2] { "color1", "color2" };
+                            u.color2 = new string[2] { "color1", "color2" };
+                            u.banner = "dummy banner";
+                            u.banners = new string[3] { "banner1", "banner2", "banner3" };
+                            u.shields = new string[3] { "shield1", "shield2", "shield3" };
 
-                                c.units.TryAdd(el.Name.ToString().ToString(), u);
-                            }
+                            c.units.TryAdd(hero.Name.ToString(), u);
+                            
                         }
                         k.clans.TryAdd(clan.Name.ToString(), c);
 
@@ -423,20 +453,16 @@ namespace PocColor
 
                         c.units.TryAdd(hero.Name.ToString(), u);
                     }
-                    foreach (MobileParty party in clan.AllParties)
+                    foreach (Hero hero in clan.Heroes)
                     {
-                        foreach (CharacterObject el in party.MemberRoster.Troops)
-                        {
-                            PocColorModConfigUnit u = new PocColorModConfigUnit();
-                            u.mode = 3;
-                            u.color = new string[2] { "color1", "color2" };
-                            u.color2 = new string[2] { "color1", "color2" };
-                            u.banner = "dummy banner";
-                            u.banners = new string[3] { "banner1", "banner2", "banner3" };
-                            u.shields = new string[3] { "shield1", "shield2", "shield3" };
-
-                            c.units.TryAdd(el.Name.ToString().ToString(), u);
-                        }
+                           PocColorModConfigUnit u = new PocColorModConfigUnit();
+                           u.mode = 3;
+                           u.color = new string[2] { "color1", "color2" };
+                           u.color2 = new string[2] { "color1", "color2" };
+                           u.banner = "dummy banner";
+                           u.banners = new string[3] { "banner1", "banner2", "banner3" };
+                           u.shields = new string[3] { "shield1", "shield2", "shield3" };
+                           c.units.TryAdd(hero.Name.ToString(), u);
                     }
                     newConfigTemplate.clans.TryAdd(clan.Name.ToString(), c);
                 }
@@ -458,6 +484,15 @@ namespace PocColor
             {
                 Log.write(e.Message);
             }
+
+            /*
+            for (int i = 0; i < Campaign.Current.Kingdoms.Count; i++)
+            {
+                Kingdom kingdom = Campaign.Current.Kingdoms[i];
+                kingdomBannerStr = PocColorMod.SerializeBanner(kingdom.Banner);
+                Log.write("====> kingdom [" + kingdom.Name.ToString() + "]" + " banner: " + kingdomBannerStr);
+            }
+            */
 
         }
     }

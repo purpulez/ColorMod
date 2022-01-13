@@ -15,5 +15,17 @@ namespace PocColor.Config
         public string[] color2 { get; set; }
 
         public string FollowKingdomColors { get; set; }
+
+        public string FollowKingdomBackgroundOnly { get; set; }
+
+        public string BearRulerColors { get; set; }
+
+        public string BearRulerBanner { get; set; }
+
+        public string BearRulerShield { get; set; }
+
+        public Map<String, string[]>[] vars { get; set; }
+
+
     }
 }

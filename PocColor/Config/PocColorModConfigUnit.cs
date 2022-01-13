@@ -21,5 +21,27 @@ namespace PocColor.Config
 
         public string[] banners { get; set; }
 
+        public string BearRulerColors { get; set; }
+
+        public string BearRulerBanner { get; set; }
+
+        public string BearRulerShield { get; set; }
+
+        public int? rulerMode { get; set; }
+
+        public string[] rulerColor { get; set; }
+
+        public string[] rulerColor2 { get; set; }
+
+        public string rulerBanner { get; set; }
+
+        public string rulerShield { get; set; }
+
+        public string[] combatShields { get; set; }
+
+        public string[] combatBanners { get; set; }
+
+        public Map<String, string[]>[] vars { get; set; }
+
     }
 }

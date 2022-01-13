@@ -7,17 +7,31 @@ using System.Threading.Tasks;
 
 namespace PocColor.Config
 {
- 
-        public class Integer
-        {
-            public uint value { get; set; }
-
-            public Integer(uint value) {
-              this.value = value;
-            }
+    public class Integer
+    {
+       public uint value { get; set; }
+        
+        public Integer(uint value) {
+         
+            this.value = value;
         }
+        
+    }
+    public class CharInfo
+    {
+        public string name { get; set; }
 
-        public class Map<TKey, TValue> : ConcurrentDictionary<TKey, TValue> where TValue : class
+        public bool isHero { get; set; }
+
+        public CharInfo(string name, bool isHero)
+        {
+            this.name = name;
+            this.isHero = isHero;
+
+        }
+    }
+
+    public class Map<TKey, TValue> : ConcurrentDictionary<TKey, TValue> where TValue : class
         {
             public new TValue this[TKey key]
             {
