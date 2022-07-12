@@ -1469,8 +1469,7 @@ namespace PocColor
 							}
 							//Locate Banner
 						}
-
-						__instance.EquipItemsFromSpawnEquipment();
+						__instance.EquipItemsFromSpawnEquipment(false);
 					}
 				}
 				catch (Exception e)

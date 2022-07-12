@@ -19,7 +19,7 @@ namespace PocColor
     public class PocColorMod : MBSubModuleBase
     {
 
-        public const string MOD_VERSION = "1.0.38";
+        public const string MOD_VERSION = "1.0.40";
 
         public static PocColorModConfig config { get; set; }
 
