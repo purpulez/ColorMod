@@ -32,6 +32,10 @@ namespace PocColor.Config
             unit.rulerColor2 = this.rulerColor2;
             unit.rulerBanner = this.rulerBanner;
             unit.rulerShield = this.rulerShield;
+            unit.cultures = this.cultures;
+            unit.tiers = this.tiers;
+            unit.types = this.types;
+
             return unit;
         }
 

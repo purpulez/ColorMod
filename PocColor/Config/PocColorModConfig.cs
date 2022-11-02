@@ -5,14 +5,17 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using System.Runtime.InteropServices;
-using TaleWorlds.CampaignSystem.ViewModelCollection.Craft;
 using TaleWorlds.Core;
 using TaleWorlds.CampaignSystem;
 using NUnit.Framework;
+using TaleWorlds.Engine.GauntletUI;
+using TaleWorlds.Library;
+using System.Text.RegularExpressions;
+using System.Reflection;
 
 namespace PocColor.Config
 {
-    public class PocColorModConfig
+    public class PocColorModConfig:UnitsContainerSection
     {
 
         public bool log { get; set; } = false;
@@ -402,7 +405,7 @@ namespace PocColor.Config
         }
 
 
-        public (int, string[], string[], string[], string[]) GetConfig(string kingdom, string clan, string unit, bool isPlayerKingdom, bool isPlayerClan, bool isPlayer, bool isKing, bool isLeader, bool isHero)
+        public (int, string[], string[], string[], string[]) GetConfig(string kingdom, string clan, string unit, bool isPlayerKingdom, bool isPlayerClan, bool isPlayer, bool isKing, bool isLeader, bool isHero, bool isMounted, bool isRanged, int tier, string culture)
         {
             int mode = 0;
             string[] color = null;
@@ -411,6 +414,7 @@ namespace PocColor.Config
             string[] shields = null;
             string[] banners = null;
             string[] bannersFull = null;
+
 
             PocColorModConfigKingdom kConfig = null;
             PocColorModConfigClan kcConfig = null;
@@ -422,7 +426,6 @@ namespace PocColor.Config
 
             try
             {
-
                 //search config from lowest to highest priority
                 //Kingdom
                 //Clan
@@ -432,8 +435,8 @@ namespace PocColor.Config
                 //ClanUnit
                 //KingdomClanUnit
                 
-                (kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig) = getConfigScopes(kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig, kingdom, clan, unit, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero);
-
+                (kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig) = getConfigScopes(kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig, kingdom, clan, unit, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero, isMounted, isRanged, tier, culture);
+                
                 Map<String, string[]>[] vars = this.defaultConfig?.vars ?? null;
                 vars = kConfig?.vars ?? vars;
                 vars = cConfig?.vars ?? vars;
@@ -442,12 +445,6 @@ namespace PocColor.Config
                 vars = kuConfig?.vars ?? vars;
                 vars = cuConfig?.vars ?? vars;
                 vars = kcuConfig?.vars ?? vars;
-
-                Map<string, string> values = null;
-                if (vars is object)
-                {
-                    values = GetVarsValues(vars);
-                }
 
                 mode = this.defaultConfig?.mode ?? 2;
 
@@ -501,6 +498,17 @@ namespace PocColor.Config
                 banners = cuConfig?.banners ?? banners;
                 banners = kcuConfig?.banners ?? banners;
 
+                string[] combatShields;
+                string[] combatBanners;
+                
+                (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseUnitsDetails(uConfig, isMounted, isRanged, tier, culture, vars, mode, color, color2, banner, shields, banners, null, null);
+                
+                (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseUnitsDetails(kuConfig, isMounted, isRanged, tier, culture, vars, mode, color, color2, banner, shields, banners, null, null);
+                
+                (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseUnitsDetails(cuConfig, isMounted, isRanged, tier, culture, vars, mode, color, color2, banner, shields, banners, null, null);
+                
+                (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseUnitsDetails(kcuConfig, isMounted, isRanged, tier, culture, vars, mode, color, color2, banner, shields, banners, null, null);
+                
                 if (!String.IsNullOrEmpty(banner) && (banners != null) && banners.Length > 0)
                 {
                     bannersFull = new string[banners.Length + 1];
@@ -524,6 +532,12 @@ namespace PocColor.Config
                 bool isRuler = false;
                 (isRuler, mode, color, color2, bannersFull, shields) = GetRulerConfig(clan, mode, color, color2, bannersFull, shields, kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig);
 
+                Map<string, string> values = null;
+                if (vars is object)
+                {
+                    values = GetVarsValues(vars);
+                }
+
                 //RESOLVE SHIELDS AND BANNERS
                 //RESOLVE BANNERS AND SHIELDS
                 if (values is object)
@@ -540,7 +554,111 @@ namespace PocColor.Config
             return (mode, color, color2, bannersFull, shields);
         }
 
-        public (int, string[], string[], string[], string[]) GetBattleConfig(string kingdom, string clan, string unit, bool isPlayerKingdom, bool isPlayerClan, bool isPlayer, bool isKing, bool isLeader, bool isHero)
+        private (Map<String, string[]>[], int, string[], string[], string, string[], string[], string[], string[]) parseUnitsDetails(ConfigSectionUnit unitsConfig, bool isMounted, bool isRanged, int tier, string culture, Map<String, string[]>[] vars, int mode, string[] color, string[] color2, string banner, string[] shields, string[] banners, string[] combatshields, string[] combatbanners)
+        {
+            
+            if (!(unitsConfig is object))
+            {
+                return (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
+            }
+
+            //Parse Cultures
+            if (unitsConfig.cultures is object && culture is object)
+            {
+               (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseCriteria(unitsConfig.cultures[culture], vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
+            }
+            
+            //Types 
+            (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseTypeCriteria(unitsConfig, isMounted, isRanged, vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
+           
+            //Parse Tiers
+            if (unitsConfig.tiers is object) 
+            {
+                (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseCriteria(unitsConfig.tiers[tier], vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
+            }
+
+            if (unitsConfig.cultures is object && culture is object && unitsConfig.cultures[culture] is object)
+            {
+                //Parse Cultures.Types
+                (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseTypeCriteria(unitsConfig.cultures[culture], isMounted, isRanged, vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
+                
+                //Parse Cultures.Tiers
+                (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseCriteria(unitsConfig.cultures[culture].tiers[tier], vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
+            }
+            if (unitsConfig.tiers is object)
+            {
+                (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseTypeCriteria(unitsConfig.tiers[tier], isMounted, isRanged, vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);        
+            }
+            if (unitsConfig.cultures is object && culture is object && unitsConfig.cultures[culture] is object)
+            {
+                if (unitsConfig.cultures[culture].tiers is object)
+                {
+                    (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseTypeCriteria(unitsConfig.cultures[culture].tiers[tier], isMounted, isRanged, vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);          
+                }
+            }
+            return (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
+        }
+
+        private (Map<String, string[]>[], int, string[], string[], string, string[], string[], string[], string[]) parseCriteria(ConfigSection unitsConfig, Map<String, string[]>[] vars, int mode, string[] color, string[] color2, string banner, string[] shields, string[] banners, string[] combatShields, string[] combatBanners)
+        {
+            if (unitsConfig is object)
+            {
+                vars = unitsConfig.vars ?? vars;
+                mode = unitsConfig.mode ?? mode;
+                color = unitsConfig.color ?? color;
+                color2 = unitsConfig.color2 ?? color2;
+                banner = unitsConfig.banner ?? banner;
+                banners = unitsConfig.banners ?? banners;
+                shields = unitsConfig.shields ?? shields;
+                combatShields = unitsConfig?.combatShields ?? combatShields;
+                combatBanners = unitsConfig?.combatBanners ?? combatBanners;
+            }
+            return (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners);
+        }
+
+        private (Map<String, string[]>[], int, string[], string[], string, string[], string[], string[], string[]) parseTypeCriteria(ConfigSectionTier unitsConfig, bool isMounted, bool isRanged, Map<String, string[]>[] vars, int mode, string[] color, string[] color2, string banner, string[] shields, string[] banners, string[] combatShields, string[] combatBanners)
+        {
+            if (!(unitsConfig is object) || !(unitsConfig.types is object))
+            {
+                return (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners);
+            }
+
+            if (isMounted)
+            {
+                (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseCriteria(unitsConfig.types["Mounted"], vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners);
+            }
+            else
+            {
+                (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseCriteria(unitsConfig.types["Foot"], vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners);
+            }
+            if (isRanged)
+            {
+                (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseCriteria(unitsConfig.types["Ranged"], vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners);
+            }
+            else
+            {
+                (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseCriteria(unitsConfig.types["Melee"], vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners);
+            }
+            if (isMounted && isRanged)
+            {
+                (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseCriteria(unitsConfig.types["HorseArcher"], vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners);
+            }
+            if (!isMounted && isRanged)
+            {
+                (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseCriteria(unitsConfig.types["Archer"], vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners);
+            }
+            if (isMounted && !isRanged)
+            {
+                (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseCriteria(unitsConfig.types["Cavalry"], vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners);
+            }
+            if (!isMounted && !isRanged)
+            {
+                (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseCriteria(unitsConfig.types["Infantry"], vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners);
+            }
+            return (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners);
+        }
+
+        public (int, string[], string[], string[], string[]) GetBattleConfig(string kingdom, string clan, string unit, bool isPlayerKingdom, bool isPlayerClan, bool isPlayer, bool isKing, bool isLeader, bool isHero, bool isMounted, bool isRanged, int tier, string culture)
         {
             int mode = 0;
             string[] color = null;
@@ -559,9 +677,9 @@ namespace PocColor.Config
             PocColorModConfigUnit cuConfig = null;
             PocColorModConfigUnit uConfig = null;
 
-            (kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig) = getConfigScopes(kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig, kingdom, clan, unit, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero);
+            (kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig) = getConfigScopes(kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig, kingdom, clan, unit, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero, isMounted, isRanged, tier, culture);
 
-            (mode, color, color2, banners, shields) = GetConfig(kingdom, clan, unit, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero);
+            (mode, color, color2, banners, shields) = GetConfig(kingdom, clan, unit, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero, isMounted, isRanged, tier, culture);
 
             Map<String, string[]>[] vars = this.defaultConfig?.vars ?? null;
             vars = kConfig?.vars ?? vars;
@@ -572,12 +690,6 @@ namespace PocColor.Config
             vars = cuConfig?.vars ?? vars;
             vars = kcuConfig?.vars ?? vars;
 
-            Map<string, string> values = null;
-            if (vars is object)
-            {
-                values = GetVarsValues(vars);
-            }
-
             combatShields = kConfig?.combatShields;
             combatShields = cConfig?.combatShields ?? combatShields;
             combatShields = kcConfig?.combatShields ?? combatShields;
@@ -586,11 +698,6 @@ namespace PocColor.Config
             combatShields = cuConfig?.combatShields ?? combatShields;
             combatShields = kcuConfig?.combatShields ?? combatShields;
 
-            if (combatShields is object && combatShields.Length > 0)
-            {
-                shields = combatShields;
-            }
-
             combatBanners = kConfig?.combatBanners ?? combatBanners;
             combatBanners = cConfig?.combatBanners ?? combatBanners;
             combatBanners = kcConfig?.combatBanners ?? combatBanners;
@@ -598,6 +705,24 @@ namespace PocColor.Config
             combatBanners = kuConfig?.combatBanners ?? combatBanners;
             combatBanners = cuConfig?.combatBanners ?? combatBanners;
             combatBanners = kcuConfig?.combatBanners ?? combatBanners;
+
+            string banner;
+
+            (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseUnitsDetails(uConfig, isMounted, isRanged, tier, culture, vars, mode, color, color2, null, shields, banners, combatShields, combatBanners);
+            (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseUnitsDetails(kuConfig, isMounted, isRanged, tier, culture, vars, mode, color, color2, null, shields, banners, combatShields, combatBanners);
+            (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseUnitsDetails(cuConfig, isMounted, isRanged, tier, culture, vars, mode, color, color2, null, shields, banners, combatShields, combatBanners);
+            (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseUnitsDetails(kcuConfig, isMounted, isRanged, tier, culture, vars, mode, color, color2, null, shields, banners, combatShields, combatBanners);
+
+            Map<string, string> values = null;
+            if (vars is object)
+            {
+                values = GetVarsValues(vars);
+            }
+
+            if (combatShields is object && combatShields.Length > 0)
+            {
+                shields = combatShields;
+            }
 
             if (combatBanners is object && combatBanners.Length > 0)
             {
@@ -615,7 +740,7 @@ namespace PocColor.Config
         }
 
 
-        public Map<string, string[]>[] GetVars(string kingdom, string clan, string unit, bool isPlayerKingdom, bool isPlayerClan, bool isPlayer, bool isKing, bool isLeader, bool isHero)
+        public Map<string, string[]>[] GetVars(string kingdom, string clan, string unit, bool isPlayerKingdom, bool isPlayerClan, bool isPlayer, bool isKing, bool isLeader, bool isHero, bool isMounted, bool isRanged, int tier, string culture)
         {
 
             PocColorModConfigKingdom kConfig = null;
@@ -626,7 +751,7 @@ namespace PocColor.Config
             PocColorModConfigUnit cuConfig = null;
             PocColorModConfigUnit uConfig = null;
 
-            (kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig) = getConfigScopes(kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig, kingdom, clan, unit, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero);
+            (kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig) = getConfigScopes(kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig, kingdom, clan, unit, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero, isMounted, isRanged, tier, culture);
 
             Map<string, string[]>[] vars = this.defaultConfig?.vars ?? null;
             vars = kConfig?.vars ?? vars;
@@ -689,7 +814,7 @@ namespace PocColor.Config
         }
 
 
-        public (PocColorModConfigKingdom, PocColorModConfigClan, PocColorModConfigUnit, PocColorModConfigUnit, PocColorModConfigClan, PocColorModConfigUnit, PocColorModConfigUnit ) getConfigScopes(PocColorModConfigKingdom kConfig, PocColorModConfigClan kcConfig, PocColorModConfigUnit kuConfig, PocColorModConfigUnit kcuConfig, PocColorModConfigClan cConfig, PocColorModConfigUnit cuConfig, PocColorModConfigUnit uConfig, string kingdom, string clan, string unit, bool isPlayerKingdom, bool isPlayerClan, bool isPlayer, bool isKing, bool isLeader, bool isHero)
+        public (PocColorModConfigKingdom, PocColorModConfigClan, PocColorModConfigUnit, PocColorModConfigUnit, PocColorModConfigClan, PocColorModConfigUnit, PocColorModConfigUnit ) getConfigScopes(PocColorModConfigKingdom kConfig, PocColorModConfigClan kcConfig, PocColorModConfigUnit kuConfig, PocColorModConfigUnit kcuConfig, PocColorModConfigClan cConfig, PocColorModConfigUnit cuConfig, PocColorModConfigUnit uConfig, string kingdom, string clan, string unit, bool isPlayerKingdom, bool isPlayerClan, bool isPlayer, bool isKing, bool isLeader, bool isHero, bool isMounted, bool isRanged, int tier, string culture)
         {
             //KINGOM
             kConfig = this.kingdoms?[kingdom];
@@ -709,101 +834,57 @@ namespace PocColor.Config
             {
                 kcConfig = kConfig?.clans?["PlayerClan"];
             }
-
             //UNIT
-            uConfig = this.units?[unit];
-            if (uConfig == null && isPlayer)
-            {
-                uConfig = this.units?["Player"];
-            }
-            if (uConfig == null && isKing)
-            {
-                uConfig = this.units?["King"];
-            }
-            if (uConfig == null && isLeader)
-            {
-                uConfig = this.units?["Leader"];
-            }
-            if (uConfig == null && isHero)
-            {
-                uConfig = this.units?["Hero"];
-            }
-            else if (uConfig == null && !isHero)
-            {
-                uConfig = this.units?["Trooper"];
-            }
-
+            uConfig = parseUnits(this, unit, isPlayer, isKing, isLeader, isHero);
             //KINGDOM UNIT
-            kuConfig = kConfig?.units?[unit];
-            if (kuConfig == null && isPlayer)
-            {
-                kuConfig = kConfig?.units?["Player"];
-            }
-            if (kuConfig == null && isKing)
-            {
-                kuConfig = kConfig?.units?["King"];
-            }
-            if (kuConfig == null && isLeader)
-            {
-                kuConfig = kConfig?.units?["Leader"];
-            }
-            if (kuConfig == null && isHero)
-            {
-                kuConfig = kConfig?.units?["Hero"];
-            }
-            else if (kuConfig == null && !isHero)
-            {
-                kuConfig = kConfig?.units?["Trooper"];
-            }
-
+            kuConfig = parseUnits(kConfig, unit, isPlayer, isKing, isLeader, isHero);
             //CLAN UNIT
-            cuConfig = cConfig?.units?[unit];
-            if (cuConfig == null && isPlayer)
-            {
-                cuConfig = cConfig?.units?["Player"];
-            }
-            if (cuConfig == null && isKing)
-            {
-                cuConfig = cConfig?.units?["King"];
-            }
-            if (cuConfig == null && isLeader)
-            {
-                cuConfig = cConfig?.units?["Leader"];
-            }
-            if (cuConfig == null && isHero)
-            {
-                cuConfig = cConfig?.units?["Hero"];
-            }
-            else if (cuConfig == null && !isHero)
-            {
-                cuConfig = cConfig?.units?["Trooper"];
-            }
-
+            cuConfig = parseUnits(cConfig, unit, isPlayer, isKing, isLeader, isHero);
             //KINGDOM CLAN UNIT
-            kcuConfig = kcConfig?.units?[unit];
-            if (kcuConfig == null && isPlayer)
-            {
-                kcuConfig = kcConfig?.units?["Player"];
-            }
-            if (kcuConfig == null && isKing)
-            {
-                kcuConfig = kcConfig?.units?["King"];
-            }
-            if (kcuConfig == null && isLeader)
-            {
-                kcuConfig = kcConfig?.units?["Leader"];
-            }
-            if (kcuConfig == null && isHero)
-            {
-                kcuConfig = kcConfig?.units?["Hero"];
-            }
-            else if (kcuConfig == null && !isHero)
-            {
-                kcuConfig = kcConfig?.units?["Trooper"];
-            }
+            kcuConfig = parseUnits(kcConfig, unit, isPlayer, isKing, isLeader, isHero);
 
             return (kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig);
         }
+
+        private PocColorModConfigUnit parseUnits(UnitsContainerSection section, string unit, bool isPlayer, bool isKing, bool isLeader, bool isHero)
+        {
+            PocColorModConfigUnit unitConfig = section?.units?[unit];
+            if (unitConfig == null)
+            {
+                if (isPlayer)
+                {
+                    unitConfig = section?.units?["Player"];
+                }
+                if (unitConfig == null)
+                {
+                    if (isKing)
+                    {
+                        unitConfig = section?.units?["King"];
+                    }
+                    if (unitConfig == null)
+                    {
+                        if (isLeader)
+                        {
+                            unitConfig = section?.units?["Leader"];  
+                        }
+                        if (unitConfig == null)
+                        {
+                            if (isHero)
+                            {
+                                unitConfig = section?.units?["Hero"];
+                            }
+                            else if (unitConfig == null && !isHero)
+                            {
+                                unitConfig = section?.units?["Trooper"];
+                            }
+                        }
+                    }
+                }
+            }
+
+            return unitConfig;
+        }
+
 
         public void parseGroups()
         {

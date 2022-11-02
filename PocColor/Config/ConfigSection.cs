@@ -3,33 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.IO;
 
 namespace PocColor.Config
 {
-    public class PocColorModConfigKingdom: ConfigSection, UnitsContainerSection
+    public class ConfigSection
     {
         public int? mode { get; set; }
 
         public string[] color { get; set; }
 
         public string[] color2 { get; set; }
-
-        public string clanBanner { get; set; }
-        
-        public string clanShield { get; set; }
-
-        public string kingdomBanner { get; set; }
-
-        public string kingdomShield { get; set; }
-
-        public string primaryColor { get; set; }
-
-        public string secondaryColor { get; set; }
-
-        public string FollowKingdomColors { get; set; }
-
-        public string FollowKingdomBackgroundOnly { get; set; }
 
         public string banner { get; set; }
 
@@ -58,12 +41,5 @@ namespace PocColor.Config
         public string[] combatBanners { get; set; }
 
         public Map<String, string[]>[] vars { get; set; }
-
-        public Map<String, PocColorModConfigUnit> units { get; set; }
-
-        public Map<String, PocColorModConfigClan> clans { get; set; }
-
-        public PocColorModGroupEntry[] groups { get; set; }
-
     }
 }

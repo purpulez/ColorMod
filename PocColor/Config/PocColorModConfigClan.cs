@@ -7,7 +7,7 @@ using System.IO;
 
 namespace PocColor.Config
 {
-    public class PocColorModConfigClan
+    public class PocColorModConfigClan:ConfigSection, UnitsContainerSection
     {
         public int? mode { get; set; }
 

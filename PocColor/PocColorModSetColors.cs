@@ -18,11 +18,19 @@ using TaleWorlds.CampaignSystem.ViewModelCollection.ClanManagement;
 using SandBox.View.Map;
 using TaleWorlds.ObjectSystem;
 using System.Threading;
-using SandBox.GauntletUI;
+using SandBox.GauntletUI.BannerEditor;
+
 using SandBox.ViewModelCollection.Nameplate;
 
 using PocColor.Config;
 using NUnit.Framework;
+
+using TaleWorlds.CampaignSystem.ViewModelCollection.Party;
+using TaleWorlds.CampaignSystem.ViewModelCollection.Inventory;
+using TaleWorlds.MountAndBlade.View.Tableaus;
+using System.Text.RegularExpressions;
+using System.Timers;
+using TaleWorlds.CampaignSystem.ViewModelCollection.CharacterDeveloper;
 
 namespace PocColor
 {
@@ -58,7 +66,7 @@ namespace PocColor
 		public static Random rnd = new Random();
 
 		//A map to store the units names allows resolving them from anywhere
-		public static Map<string, CharInfo > unitNames = new Map<string, CharInfo>();
+		//public static Map<string, CharInfo > unitNames = new Map<string, CharInfo>();
 		public static Map<string, Integer> extraColorMap = new Map<string, Integer>();
 
 		public static string DUMMY_BANNER = "30.83.88.1536.1536.768.768.1.0.0.522.40.40.924.924.762.775.0.0.0";
@@ -111,31 +119,29 @@ namespace PocColor
 			return (parseColor(colors[r]), parseColor(colors2[r]));
 		}
 
-		static private (int, uint?, uint?, string, string) getColorFromConfig(ref Banner banner, string unitName, bool isHero)
+		static private (int, uint?, uint?, string, string) getColorFromConfig(ref Banner banner, string unitName, bool isHero, bool isMounted, bool isRanged, int tier, string culture)
 		{
 			string bannerStr = banner is object ? PocColorMod.SerializeBanner(banner) : null;
-			return getColorFromConfig(ref banner, ref bannerStr, unitName, isHero);
+			return getColorFromConfig(ref banner, ref bannerStr, unitName, isHero, isMounted, isRanged, tier, culture);
 		}
-		static private (int, uint?, uint?, string, string) getColorFromConfig(ref string bannerStr, string unitName, bool isHero)
+		static private (int, uint?, uint?, string, string) getColorFromConfig(ref string bannerStr, string unitName, bool isHero, bool isMounted, bool isRanged, int tier, string culture)
 		{
 			Banner banner = bannerStr is object ? new Banner(bannerStr) : null;
-			return getColorFromConfig(ref banner, ref bannerStr, unitName, isHero);
+			return getColorFromConfig(ref banner, ref bannerStr, unitName, isHero, isMounted, isRanged, tier, culture);
 		}
 
-		static private (int, uint?, uint?, string, string) getBattleColorFromConfig(ref Banner banner, string unitName, bool isHero)
+		static private (int, uint?, uint?, string, string) getBattleColorFromConfig(ref Banner banner, string unitName, bool isHero, bool isMounted, bool isRanged, int tier, string culture)
 		{
 			string bannerStr = banner is object ? PocColorMod.SerializeBanner(banner) : null;
-			return getBattleColorFromConfig(ref banner, ref bannerStr, unitName, isHero);
+			return getBattleColorFromConfig(ref banner, ref bannerStr, unitName, isHero, isMounted, isRanged, tier, culture);
 		}
-		static private (int, uint?, uint?, string, string) getBattleColorFromConfig(ref string bannerStr, string unitName, bool isHero)
+		static private (int, uint?, uint?, string, string) getBattleColorFromConfig(ref string bannerStr, string unitName, bool isHero, bool isMounted, bool isRanged, int tier, string culture)
 		{
 			Banner banner = bannerStr is object ? new Banner(bannerStr) : null;
-			return getBattleColorFromConfig(ref banner, ref bannerStr, unitName, isHero);
+			return getBattleColorFromConfig(ref banner, ref bannerStr, unitName, isHero, isMounted, isRanged, tier, culture);
 		}
-
-		static private (string, string) getBannerFromConfig(string bannerStr, string unitName, bool isHero)
+		static private (string, string) getBannerFromConfig(string bannerStr, string unitName, bool isHero, bool isMounted, bool isRanged, int tier, string culture)
 		{
-
 			string newBanner = null;
 			string newShield = null;
 
@@ -193,8 +199,8 @@ namespace PocColor
 				bool isPlayerClan = (!string.IsNullOrEmpty(playerClanName) && clan == playerClanName) || (isPlayer && !string.IsNullOrEmpty(clan));
 				bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
 
-				if (PocColorMod.doLog) Log.write("==> character is: [" + unitName + "] of clan [" + clan + "] of kingdom [" + kingdom + "] isPlayerKingdom [" + isPlayerKingdom + "] isPlayerClan [" + isPlayerClan + "] isPlayer [" + isPlayer + "] isKing [" + isKing + "] isLeader [" + isLeader + "] isHero [" + isHero + "]");
-				(int mode, string[] colors, string[] colors2, string[] banners, string[] shields ) = PocColorMod.config.GetConfig(kingdom, clan, unitName, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero);
+                if (PocColorMod.doLog) Log.write("==> character is: [" + unitName + "] of clan [" + clan + "] of kingdom [" + kingdom + "] isPlayerKingdom [" + isPlayerKingdom + "] isPlayerClan [" + isPlayerClan + "] isPlayer [" + isPlayer + "] isKing [" + isKing + "] isLeader [" + isLeader + "] isHero [" + isHero + "] isMounted [" + isMounted + "] isRanged [" + isRanged + "] tier [" + tier + "] culture [" + culture + "]");
+                (int mode, string[] colors, string[] colors2, string[] banners, string[] shields ) = PocColorMod.config.GetConfig(kingdom, clan, unitName, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero, isMounted, isRanged, tier, culture);
 				
 				string colorsstr = colors is object ? string.Join(",", colors) : "";
 				string colors2str = colors2 is object ? string.Join(",", colors2) : "";
@@ -270,7 +276,7 @@ namespace PocColor
 		}
 
 
-		static private string getIconFromConfig(ref string bannerStr, string unitName, bool isHero)
+		static private string getIconFromConfig(ref string bannerStr, string unitName, bool isHero, bool isMounted, bool isRanged, int tier, string culture)
 		{
 			string shield;
 			string a, b, c;
@@ -293,13 +299,13 @@ namespace PocColor
 			(a, shield, b, c) = PocColorMod.config.GetKingdomConfig(kingdom, isPlayerKingdom);
 			if (shield is object) return shield;
 
-			(int mode, uint? c1, uint? c2, string newBanner, string newShield) = getColorFromConfig(ref bannerStr, unitName, isHero);
+			(int mode, uint? c1, uint? c2, string newBanner, string newShield) = getColorFromConfig(ref bannerStr, unitName, isHero, isMounted, isRanged, tier, culture);
 			if (newShield is object) return newShield;
 
 			return bannerStr;
 		}
 
-		static private (int, uint?, uint?, string, string) getColorFromConfig(ref Banner banner, ref string bannerStr, string unitName, bool isHero)
+		static private (int, uint?, uint?, string, string) getColorFromConfig(ref Banner banner, ref string bannerStr, string unitName, bool isHero, bool isMounted, bool isRanged, int tier, string culture)
 		{
 
 			uint? color1 = null;
@@ -360,9 +366,9 @@ namespace PocColor
 				bool isPlayerClan = (!string.IsNullOrEmpty(playerClanName) && clan == playerClanName) || (isPlayer && !string.IsNullOrEmpty(clan));
 				bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
 
-				if (PocColorMod.doLog) Log.write("==> character is: [" + unitName + "] of clan [" + clan + "] of kingdom [" + kingdom + "] isPlayerKingdom [" + isPlayerKingdom + "] isPlayerClan [" + isPlayerClan + "] isPlayer [" + isPlayer + "] isKing [" + isKing + "] isLeader [" + isLeader + "] isHero [" + isHero + "]");
+				if (PocColorMod.doLog) Log.write("==> character is: [" + unitName + "] of clan [" + clan + "] of kingdom [" + kingdom + "] isPlayerKingdom [" + isPlayerKingdom + "] isPlayerClan [" + isPlayerClan + "] isPlayer [" + isPlayer + "] isKing [" + isKing + "] isLeader [" + isLeader + "] isHero [" + isHero + "] isMounted [" + isMounted + "] isRanged [" + isRanged + "] tier [" + tier + "] culture [" + culture + "]");
 
-				(int mode2, string[] colors, string[] colors2, string[] banners, string[] shields ) = PocColorMod.config.GetConfig(kingdom, clan, unitName, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero);
+				(int mode2, string[] colors, string[] colors2, string[] banners, string[] shields ) = PocColorMod.config.GetConfig(kingdom, clan, unitName, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero, isMounted, isRanged, tier, culture);
 				mode = mode2;
 				
 				string colorsstr = colors is object ? string.Join(",", colors) : "";
@@ -522,7 +528,7 @@ namespace PocColor
 			return (mode, color1, color2, newBanner, newShield);
 		}
 
-		static private (int, uint?, uint?, string, string) getBattleColorFromConfig(ref Banner banner, ref string bannerStr, string unitName, bool isHero)
+		static private (int, uint?, uint?, string, string) getBattleColorFromConfig(ref Banner banner, ref string bannerStr, string unitName, bool isHero, bool isMounted, bool isRanged, int tier, string culture)
 		{
 
 			uint? color1 = null;
@@ -583,9 +589,9 @@ namespace PocColor
 				bool isPlayerClan = (!string.IsNullOrEmpty(playerClanName) && clan == playerClanName) || (isPlayer && !string.IsNullOrEmpty(clan));
 				bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
 
-				if (PocColorMod.doLog) Log.write("==> character is: [" + unitName + "] of clan [" + clan + "] of kingdom [" + kingdom + "] isPlayerKingdom [" + isPlayerKingdom + "] isPlayerClan [" + isPlayerClan + "] isPlayer [" + isPlayer + "] isKing [" + isKing + "] isLeader [" + isLeader + "] isHero [" + isHero + "]");
+                if (PocColorMod.doLog) Log.write("==> character is: [" + unitName + "] of clan [" + clan + "] of kingdom [" + kingdom + "] isPlayerKingdom [" + isPlayerKingdom + "] isPlayerClan [" + isPlayerClan + "] isPlayer [" + isPlayer + "] isKing [" + isKing + "] isLeader [" + isLeader + "] isHero [" + isHero + "] isMounted [" + isMounted + "] isRanged [" + isRanged + "] tier [" + tier + "] culture [" + culture + "]");
 
-				(int mode2, string[] colors, string[] colors2, string[] banners, string[] shields) = PocColorMod.config.GetBattleConfig(kingdom, clan, unitName, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero);
+                (int mode2, string[] colors, string[] colors2, string[] banners, string[] shields) = PocColorMod.config.GetBattleConfig(kingdom, clan, unitName, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero, isMounted, isRanged, tier, culture);
 				
 				mode = mode2;
 				string colorsstr = colors is object ? string.Join(",", colors) : "";
@@ -777,7 +783,11 @@ namespace PocColor
 
 					if (banner is object)
 					{
-						(mode, c1, c2, newbanner, newshield) = getColorFromConfig(ref banner, character.GetName().ToString(), character.IsHero );
+
+                        String charName = character.GetName().ToString();
+                        CharacterObject chara = CharacterObject.FindFirst(c => c.Name.ToString().Equals(charName));
+
+                        (mode, c1, c2, newbanner, newshield) = getColorFromConfig(ref banner, character.GetName().ToString(), character.IsHero, character.IsMounted, character.IsRanged, chara.Tier, character.Culture.Name.ToString() );
 						//Log.write("character [" + character.StringId + "] colors updated");
 
 						if (c1 is object && c2 is object)
@@ -804,7 +814,10 @@ namespace PocColor
 							banner = origin.Banner;
 							if (banner is object)
 							{
-								(mode, c1, c2, newbanner, newshield) = getColorFromConfig(ref banner, character.GetName().ToString(), character.IsHero );
+                                String charName = character.GetName().ToString();
+                                CharacterObject chara = CharacterObject.FindFirst(c => c.Name.ToString().Equals(charName));
+
+                                (mode, c1, c2, newbanner, newshield) = getColorFromConfig(ref banner, character.GetName().ToString(), character.IsHero, character.IsMounted, character.IsRanged, 0, character.Culture.Name.ToString());
 								//Log.write("character [" + character.StringId + "] colors updated");
 
 								if (c1 is object && c2 is object)
@@ -854,10 +867,13 @@ namespace PocColor
 					BasicCharacterObject character = __instance.AgentCharacter;
 
 					string charName = character?.GetName()?.ToString();
-					
-					if (banner is object)
+                    
+                    if (banner is object)
 					{
-						(int mode, uint? c1, uint? c2, string newbanner, string newshield) = getBattleColorFromConfig(ref banner, charName, character.IsHero);
+                        CharacterObject chara = CharacterObject.FindFirst(c => c.Name.ToString().Equals(charName));
+						int tier = chara?.Tier ?? 0;
+
+                        (int mode, uint? c1, uint? c2, string newbanner, string newshield) = getBattleColorFromConfig(ref banner, charName, character.IsHero, character.IsMounted, character.IsRanged, tier, character.Culture.Name.ToString());
 						if (c1 is object && c2 is object)
 						{
 							//Log.write("===> Update Agent colors and Shield: " + c1 + " " + c2);
@@ -929,6 +945,7 @@ namespace PocColor
 
 					BasicCharacterObject character = __instance.AgentCharacter;
 					Banner banner = __instance.AgentBanner;
+
 					if (character is object && banner is object)
 					{
 						//Banner already set, ignore to prevent override
@@ -956,21 +973,35 @@ namespace PocColor
 		{
 			public static bool Prefix(CharacterViewModel __instance, ref uint value)
 			{
-
-				
 				try
 				{
-					//Log.write("CharacterViewModel c1");
-					CharInfo character = unitNames[__instance.CharStringId];
-					//Log.write("CharacterViewModel ArmorColor1 [" + character?.name + "]");
+                    //Log.write("CharacterViewModel c1");
+                    //REMOVE UNITNAMES CharInfo character = unitNames[__instance.CharStringId];
 
-					if (__instance.BannerCodeText is object)
+                    CharacterObject chara = null;
+
+                    if (__instance.CharStringId is object)
+                    {
+                        chara = CharacterObject.Find(__instance.CharStringId);
+                    }
+                    //Log.write("chara ID:" + __instance.CharStringId);
+                    //Log.write("chara :" + chara);
+
+					//Log.write("CharacterViewModel ArmorColor1 [" + character?.name + "]");
+					string charName = chara?.Name.ToString() ?? "";
+                    bool isHero = chara?.IsHero ?? false;
+                    bool isMounted = chara?.IsMounted ?? false;
+                    bool isRanged = chara?.IsRanged ?? false;
+                    int tier = chara?.Tier ?? 0;
+                    string culture = chara?.Culture.Name.ToString() ?? "";
+                    
+
+                    if (__instance.BannerCodeText is object)
 					{
 						string bannerStr = __instance.BannerCodeText;
 
-						//update color only if we have a banner defined
-						(int mode, uint? c1, uint? c2,string newbanner, string newshiel) = getColorFromConfig(ref bannerStr, character.name, character.isHero );
-
+                        //update color only if we have a banner defined
+                        (int mode, uint? c1, uint? c2,string newbanner, string newshiel) = getColorFromConfig(ref bannerStr, charName, isHero, isMounted, isRanged, tier, culture);
 						if (c1 is object && c2 is object)
 						{
 							return false;
@@ -995,18 +1026,36 @@ namespace PocColor
 
 				try
 				{
-					CharInfo character = unitNames[__instance.CharStringId];
+                    //REMOVE UNITNAMES CharInfo character = unitNames[__instance.CharStringId];
 					//Log.write("CharacterViewModel ArmorColor2 [" + character?.name + "]");
 
-					if (__instance.BannerCodeText is object)
+					CharacterObject chara = null;
+
+                    if (__instance.CharStringId is object)
+					{
+						chara = CharacterObject.Find(__instance.CharStringId);
+                    }
+
+                    //Log.write("chara ID:" + __instance.CharStringId);
+                    //Log.write("chara :" + chara);
+
+                    string charName = chara?.Name.ToString() ?? "";
+                    bool isHero = chara?.IsHero ?? false;
+                    bool isMounted = chara?.IsMounted ?? false;
+                    bool isRanged = chara?.IsRanged ?? false;
+                    int tier = chara?.Tier ?? 0;
+                    string culture = chara?.Culture.Name.ToString() ?? "";
+
+                    if (__instance.BannerCodeText is object)
 					{
 						string bannerStr = __instance.BannerCodeText;
-						//update color only if we have a banner defined
-						(int mode, uint? c1, uint? c2, string newbanner, string newshiel) = getColorFromConfig(ref bannerStr, character.name, character.isHero );
-					
-						if (c1 is object && c2 is object)
+
+                        //update color only if we have a banner defined
+                        (int mode, uint? c1, uint? c2, string newbanner, string newshiel) = getColorFromConfig(ref bannerStr, charName, isHero, isMounted, isRanged, tier, culture);
+
+                        if (c1 is object && c2 is object)
 						{
-							return false;
+                            return false;
 						}
 					
 					}
@@ -1015,17 +1064,19 @@ namespace PocColor
 				{
 					Log.write("Error caught:" + e.Message);
 				}
-				//Log.write("Update CharacterViewModel color2: " + value + " for char " + charName);
-				return true;
+                //Log.write("Update CharacterViewModel color2: " + value + " for char " + charName);
+                return true;
 			}
 		}
 
+        /*   REMOVE UNITNAMES
+         *   
 		[HarmonyPatch(typeof(CharacterViewModel), "FillFrom")]
 		internal class PocColorModGetCharName
 		{
 			public static void Postfix(ref CharacterViewModel __instance, BasicCharacterObject character)
 			{
-				//Log.write("CharacterViewModel FillFrom");
+				Log.write("CharacterViewModel FillFrom");
 				//We fetch the characterName when FillFrom is called
 				try
 				{
@@ -1038,40 +1089,52 @@ namespace PocColor
 				}
 			}
 		}
+		*/
 
-		/*
+        /*
 		 * ************************************************
 		 * THIS IS PARTY SCREEN: ALL CHARACTERS
 		 * ************************************************
 		 */
-		[HarmonyPatch(typeof(PartyVM), "RefreshCurrentCharacterInformation")]
+        [HarmonyPatch(typeof(PartyVM), "RefreshCurrentCharacterInformation")]
 		internal class PocColorModPartyVM
 		{
 			public static void Postfix(ref PartyVM __instance)
 			{
 				try {
 					//Log.write("PartyVM RefreshCurrentCharacterInformation");
-					CharInfo character = null;
+
+					//string charName = __instance.CurrentCharacter?.Character?.Name?.ToString();
+					//bool isHero = __instance.CurrentCharacter?.Character.IsHero ?? false;
 					
-					string charName = __instance.CurrentCharacter?.Character?.Name?.ToString();
-					bool isHero = __instance.CurrentCharacter?.Character.IsHero ?? false;
+					Hero hero = (Hero)Traverse.Create(__instance.CurrentCharacter).Field("_hero").GetValue();
 
-					if (!(charName is object)) {
-						character = unitNames[__instance.SelectedCharacter.CharStringId];
-						charName = character.name;
-						isHero = character.isHero;
+					CharacterObject chara;
+                    if (!(hero is object))
+					{
+						//REMOVE UNITNAMES character = unitNames[__instance.SelectedCharacter.CharStringId];
+						//REMOVE UNITNAMES charName = character.name;
+						//REMOVE UNITNAMES isHero = character.isHero;
+						chara = CharacterObject.Find(__instance.SelectedCharacter.CharStringId);
 					}
-					//Log.write("PartyVM RefreshCurrentCharacterInformation [" + charName + "]");
+					else
+					{
+                        chara = hero.CharacterObject;
+                    }
+                    
+                    string charName = chara.Name.ToString();
+                    bool isHero = chara.IsHero;
 
-					string bannerStr = __instance.SelectedCharacter?.BannerCodeText;
+                    //Log.write("PartyVM RefreshCurrentCharacterInformation [" + charName + "]");
+
+                    string bannerStr = __instance.SelectedCharacter?.BannerCodeText;
 					
 					if (bannerStr is object)
 					{
 						Banner banner = new Banner(bannerStr);
 
-						//updateCache(bannerStr, charName);
-
-						(int mode, uint? c1, uint? c2, string newbanner, string newshield) = getColorFromConfig(ref banner, ref bannerStr, charName, isHero);
+                        //updateCache(bannerStr, charName);
+                        (int mode, uint? c1, uint? c2, string newbanner, string newshield) = getColorFromConfig(ref banner, ref bannerStr, charName, isHero, chara.IsMounted, chara.IsRanged, chara.Tier, chara.Culture.Name.ToString());
 						if (c1 is object && c2 is object)
 						{
 							//Log.write("===> Update Current Character colors and banner: " + c1 + " " + c2 + " " + bannerStr + " for char:" + charName);
@@ -1099,7 +1162,7 @@ namespace PocColor
 		 * 3D HERO: party and screens
 		 * **********************************
 		 */
-		[HarmonyPatch(typeof(HeroViewModel), "FillFrom")]
+        [HarmonyPatch(typeof(HeroViewModel), "FillFrom")]
 		internal class PocColorModHeroFillFrom
 		{
 			public static void Postfix(ref HeroViewModel __instance, ref Hero hero)
@@ -1108,14 +1171,9 @@ namespace PocColor
 				try
 				{
 					//Log.write("HeroViewModel FillFrom");
-					CharInfo character = null;
-					
-					string charName = hero?.Name?.ToString();
-					if (!(charName is object))
-					{
-						character = unitNames[__instance.CharStringId];
-						charName = character.name;
-					}
+
+                    CharacterObject chara = hero.CharacterObject;
+                    string charName = chara.Name.ToString();
 
 					string bannerStr = __instance?.BannerCodeText;
 					//Log.write("HeroViewModel FillFrom [" + charName + "]");
@@ -1125,9 +1183,9 @@ namespace PocColor
 
 						Banner banner = new Banner(bannerStr);
 
-						//updateCache(bannerStr, charName);
-
-						(int mode, uint? c1, uint? c2, string newbanner, string newshield) = getColorFromConfig(ref banner, ref bannerStr, charName, true);
+                        //updateCache(bannerStr, charName);
+                        
+						(int mode, uint? c1, uint? c2, string newbanner, string newshield) = getColorFromConfig(ref banner, ref bannerStr, charName, true, chara.IsMounted, chara.IsRanged, chara.Tier, chara.Culture.Name.ToString() );
 						if (c1 is object && c2 is object)
 						{
 							//Log.write("===> Update Current Character colors and banner: " + c1 + " " + c2 + " " + bannerStr + " for char:" + charName);
@@ -1155,7 +1213,7 @@ namespace PocColor
 			{
 				try
 				{
-					//Log.write("ClanLordItemVM:");
+					//Log.write("ClanLordItemVM UpdateProperties:");
 
 					string bannerStr = __instance?.HeroModel?.BannerCodeText;
 					if (bannerStr is object)
@@ -1179,14 +1237,16 @@ namespace PocColor
 			{
 				try
 				{
-					//Log.write("HeroVM:");
+					//Log.write("HeroVM Constructor:");
 
 					Banner banner = hero?.ClanBanner;
 					string charName = hero?.Name?.ToString();
 
-					if (banner is object )
+                    CharacterObject chara = hero.CharacterObject;
+                    
+                    if (banner is object )
 					{
-						(int mode, uint? c1, uint? c2, string newBanner, string newShield) = getColorFromConfig(ref banner, charName, true);
+                        (int mode, uint? c1, uint? c2, string newBanner, string newShield) = getColorFromConfig(ref banner, charName, true, chara.IsMounted, chara.IsRanged, chara.Tier, chara.Culture.Name.ToString());
 						if (newShield is object)
 						{
 							banner = new Banner(newShield);
@@ -1217,6 +1277,7 @@ namespace PocColor
 		 * 3D HERO: INVENTORY
          * **********************************
          */
+		
 		[HarmonyPatch(typeof(SPInventoryVM), "UpdateCurrentCharacterIfPossible")]
 		internal class PocColorModSPInventoryVM
 		{
@@ -1224,46 +1285,46 @@ namespace PocColor
 			{
 
 				try {
-					//Log.write("SPInventoryVM UpdateCurrentCharacterIfPossible");
-					CharInfo character = null;
+                    //Log.write("SPInventoryVM UpdateCurrentCharacterIfPossible");
+                    /*					CharInfo character = null;
 
-					CharacterObject current = (CharacterObject) Traverse.Create(__instance).Field("_currentCharacter").GetValue();
-					
-					string charName = current?.Name?.ToString();
-					bool isHero = current?.IsHero ?? false;
+                                        CharacterObject current = (CharacterObject) Traverse.Create(__instance).Field("_currentCharacter").GetValue();
 
-					if (!(charName is object))
-					{
-						character = unitNames[__instance.MainCharacter.CharStringId];
-						charName = character.name;
-						isHero = character.isHero;
-					}
+                                        string charName = current?.Name?.ToString();
+                                        bool isHero = current?.IsHero ?? false;
 
-					string bannerStr = __instance.MainCharacter?.BannerCodeText;
-					//Log.write("SPInventoryVM UpdateCurrentCharacterIfPossible [" + charName + "]");
+                                        if (!(charName is object))
+                                        {
+                                            character = unitNames[__instance.MainCharacter.CharStringId];
+                                            charName = character.name;
+                                            isHero = character.isHero;
+                                        }
 
-					if (bannerStr is object)
-					{
-						Banner banner = new Banner(bannerStr);
 
-						//updateCache(bannerStr, charName);
+                                        string bannerStr = __instance.MainCharacter?.BannerCodeText;
+                                        //Log.write("SPInventoryVM UpdateCurrentCharacterIfPossible [" + charName + "]");
 
-						(int mode, uint? c1, uint? c2, string newbanner, string newshield) = getColorFromConfig(ref banner, ref bannerStr, charName, isHero);
-						if (c1 is object && c2 is object)
-						{
-							//Log.write("===> Update Current Character colors and banner: " + c1 + " " + c2 + " " + bannerStr + " for char:" + charName);
+                                        if (bannerStr is object)
+                                        {
+                                            Banner banner = new Banner(bannerStr);
 
-							__instance.MainCharacter.BannerCodeText = bannerStr;
+                                            //updateCache(bannerStr, charName);
 
-							Traverse.Create(__instance.MainCharacter).Field("_armorColor1").SetValue(c1);
-							Traverse.Create(__instance.MainCharacter).Field("_armorColor2").SetValue(c2);
-							__instance.MainCharacter.OnPropertyChanged(nameof(__instance.MainCharacter.ArmorColor1));
-							__instance.MainCharacter.OnPropertyChanged(nameof(__instance.MainCharacter.ArmorColor2));
-						}
-					}
+                                            (int mode, uint? c1, uint? c2, string newbanner, string newshield) = getColorFromConfig(ref banner, ref bannerStr, charName, isHero);
+                                            if (c1 is object && c2 is object)
+                                            {
+                                                //Log.write("===> Update Current Character colors and banner: " + c1 + " " + c2 + " " + bannerStr + " for char:" + charName);
 
-				}
-				catch (Exception e)
+                                                __instance.MainCharacter.BannerCodeText = bannerStr;
+
+                                                Traverse.Create(__instance.MainCharacter).Field("_armorColor1").SetValue(c1);
+                                                Traverse.Create(__instance.MainCharacter).Field("_armorColor2").SetValue(c2);
+                                                __instance.MainCharacter.OnPropertyChanged(nameof(__instance.MainCharacter.ArmorColor1));
+                                                __instance.MainCharacter.OnPropertyChanged(nameof(__instance.MainCharacter.ArmorColor2));
+                                            }
+                                        }*/
+                }
+                catch (Exception e)
 				{
 					Log.write(e.Message);
 				}
@@ -1288,15 +1349,19 @@ namespace PocColor
 
 				try
 				{
-					
-					if (__instance?.Equipment is null)
+                    //Log.write("Agent EquipItemsFromSpawnEquipment");
+
+                    if (__instance?.Equipment is null)
 					{
 						return true;
 					}
 					
 					MissionWeapon? weaponOpt = __instance?.Equipment[EquipmentIndex.ExtraWeaponSlot];
-					
-					if (weaponOpt is object && "mod_banner_1".Equals(weaponOpt?.Item?.ToString()) )
+
+					bool isBanner = weaponOpt?.IsBanner() ?? false;
+                    bool isShield = weaponOpt?.IsShield() ?? false;
+
+                    if (weaponOpt is object && ( "mod_banner_1".Equals(weaponOpt?.Item?.ToString()) || isBanner))
 					{
 						
 						MissionWeapon weapon = (MissionWeapon) weaponOpt;
@@ -1319,10 +1384,14 @@ namespace PocColor
 							{
 								newOverrideBanner = myclan.Banner;
 							}
-							// i can getConfig to fetch the corresponding banner and shields and see if i need to override
-							
-							//(string newbanner, string newshield) = getBannerFromConfig(bannerStr, __instance.Name);
-							(int mode, uint? c1, uint? c2, string newbanner, string newshield) = getBattleColorFromConfig(ref bannerStr, __instance.Name, __instance.IsHero);
+                            // i can getConfig to fetch the corresponding banner and shields and see if i need to override
+
+                            //(string newbanner, string newshield) = getBannerFromConfig(bannerStr, __instance.Name);
+
+                            String charName = __instance.Name;
+                            CharacterObject chara = CharacterObject.FindFirst(c => c.Name.ToString().Equals(charName));
+
+                            (int mode, uint? c1, uint? c2, string newbanner, string newshield) = getBattleColorFromConfig(ref bannerStr, __instance.Name, __instance.IsHero, chara.IsMounted, chara.IsRanged, chara.Tier, chara.Culture.Name.ToString() );
 
 							if (newbanner is Object)
 							{
@@ -1384,7 +1453,7 @@ namespace PocColor
 					Banner banner = weapon.Banner;
 					string bannerStr = banner is object ? PocColorMod.SerializeBanner(banner) : null;
 
-					if (bannerStr is object)
+                    if (bannerStr is object)
 					{
 
 						string clan = PocColorMod.bannerClanCache[bannerStr] ?? "";
@@ -1400,11 +1469,14 @@ namespace PocColor
 						{
 							newOverrideBanner = myclan.Banner;
 						}
-						// i can getConfig to fetch the corresponding banner and shields and see if i need to override
+                        // i can getConfig to fetch the corresponding banner and shields and see if i need to override
 
-						//(string newbanner, string newshield) = getBannerFromConfig(bannerStr, __instance.Name);
-						(int mode, uint? c1, uint? c2, string newbanner, string newshield) = getBattleColorFromConfig(ref bannerStr, __instance.Name, __instance.IsHero);
+                        //(string newbanner, string newshield) = getBannerFromConfig(bannerStr, __instance.Name);
 
+                        String charName = __instance.Name;
+                        CharacterObject chara = CharacterObject.FindFirst(c => c.Name.ToString().Equals(charName));
+
+                        (int mode, uint? c1, uint? c2, string newbanner, string newshield) = getBattleColorFromConfig(ref bannerStr, __instance.Name, __instance.IsHero, chara.IsMounted, chara.IsRanged, chara.Tier, chara.Culture.Name.ToString());
 
 						if (newbanner is Object)
 						{
@@ -1418,7 +1490,7 @@ namespace PocColor
 							newOverrideShield = new Banner(newshield);
 						}
 
-						if ( name.Equals("Campaign Banner Small") || name.Equals("Mod Banner 1") || name.Equals("Mod Banner 2") )
+						if ( name.Equals("Campaign Banner Small") || name.Equals("Mod Banner 1") || name.Equals("Mod Banner 2") || weapon.IsBanner() )
 						{
 							//Update all items with shield code
 							for (EquipmentIndex index = EquipmentIndex.WeaponItemBeginSlot; index < EquipmentIndex.NumAllWeaponSlots; ++index)
@@ -1442,8 +1514,9 @@ namespace PocColor
 								__instance.SetClothingColor2((uint)c2);
 							}
 						}
-						else
+						else if (weapon.IsShield())
 						{
+
 							//Update Shield
 							FieldInfo fi = typeof(MissionWeapon).GetField("<Banner>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
 							TypedReference reference = __makeref(weapon);
@@ -1454,7 +1527,7 @@ namespace PocColor
 							{
 								//Edit banner for synchronization
 								string itemName = __instance.Equipment[index].Item?.Name?.ToString();
-								if ( itemName.Equals("Campaign Banner Small") || itemName.Equals("Mod Banner 1") || itemName.Equals("Mod Banner 2") ) {
+								if ( itemName.Equals("Campaign Banner Small") || itemName.Equals("Mod Banner 1") || itemName.Equals("Mod Banner 2") || weapon.IsBanner() ) {
 									String item = __instance.Equipment[index].Item.ToString();
 									__instance.Equipment[index] = new MissionWeapon(MBObjectManager.Instance.GetObject<ItemObject>(item), (ItemModifier)null, newOverrideBanner);
 									break;
@@ -1488,14 +1561,17 @@ namespace PocColor
 			{
 				try
 				{
-					Thread thread = Thread.CurrentThread;
+                    //Log.write("AgentVisuals AddSkinArmorWeaponMultiMeshesToEntity");
+
+                    Thread thread = Thread.CurrentThread;
 					AgentVisualsData data = (AgentVisualsData)Traverse.Create(__instance).Field("_data").GetValue();
 					Banner banner = data.BannerData;
 					string bannerStr = banner is object ? PocColorMod.SerializeBanner(banner) : null;
 
 					//Log.write("AgentVisuals AddSkinArmorWeaponMultiMeshesToEntity: " + data.CharacterObjectStringIdData );
+                    
 
-					if (bannerStr != null)
+                    if (bannerStr != null)
 					{
 						string clan = PocColorMod.bannerClanCache[bannerStr] ?? "";
 						string kingdom = PocColorMod.bannerKingdomCache[bannerStr] ?? "";
@@ -1509,8 +1585,16 @@ namespace PocColor
 							newOverrideBanner = myclan.Banner;
 						}
 						// i can getConfig to fetch the corresponding banner and shields and see if i need to override
+						String charName = __instance.GetCharacterObjectID();
+                        CharacterObject chara = CharacterObject.FindFirst( c => c.Name.ToString().Equals(charName) );
+                        
+						bool isMounted = chara?.IsMounted ?? false;
+						bool isRanged = chara?.IsRanged ?? false;
+                        int tier = chara?.Tier ?? 0;
+						string culture = chara?.Culture.Name.ToString() ?? "";
+						bool isHero = chara?.IsHero ?? false;
 
-						(int mode, uint? c1, uint? c2, string newbanner, string newshield) = getColorFromConfig(ref bannerStr, __instance.GetCharacterObjectID(), true);
+                        (int mode, uint? c1, uint? c2, string newbanner, string newshield) = getColorFromConfig(ref bannerStr, charName, isHero, isMounted, isRanged, tier, culture);
 
 						//(string newbanner, string newshield) = getBannerFromConfig(bannerStr, __instance.GetCharacterObjectID(), true);
 												
@@ -1531,19 +1615,19 @@ namespace PocColor
 								string name = primaryItem?.Name?.ToString() ?? "";
 								equipmentElement = data.EquipmentData[slotIndex];
 								ItemModifier itemModifier = equipmentElement.ItemModifier;
-								
-								MissionWeapon missionWeapon;
+
+                                MissionWeapon missionWeapon;
 
 								if ( name.Equals("Campaign Banner Small") || name.Equals("Mod Banner 1") || name.Equals("Mod Banner 2") )
 								{
 									missionWeapon = new MissionWeapon(primaryItem, itemModifier, newOverrideBanner);
-								}
-								else
+                                }
+                                else
 								{
 									//Shield
 									missionWeapon = new MissionWeapon(primaryItem, itemModifier, banner);
-								}
-								if (data.AddColorRandomnessData)
+                                }
+                                if (data.AddColorRandomnessData)
 									missionWeapon.SetRandomGlossMultiplier(hashCode);
 								WeaponData weaponData = missionWeapon.GetWeaponData(needBatchedVersion);
 								WeaponData ammoWeaponData = missionWeapon.GetAmmoWeaponData(needBatchedVersion);
@@ -1583,7 +1667,7 @@ namespace PocColor
 						string charname = name.Substring(10);
 						data.CharacterObjectStringId(charname);
 					}
-				}
+                }
 				catch (Exception e)
 				{
 					Log.write("Error caught:" + e.Message);
@@ -1592,24 +1676,78 @@ namespace PocColor
 			}
 		}
 
-		[HarmonyPatch(typeof(PartyVisual), "AddCharacterToPartyIcon")]
+        [HarmonyPatch(typeof(CharacterTableau), "UpdateBannerItem")]
+        internal class PocColorModCharacterTableau
+        {
+            public static bool Prefix(ref CharacterTableau __instance, ref string __state)
+            {
+                try
+                {
+                    //Log.write("CharacterTableau UpdateBannerItem:");
+
+                    string stringId = (string)Traverse.Create(__instance).Field("_charStringId").GetValue();
+                    //Log.write("Id:" + stringId);
+					CharacterObject chara = CharacterObject.Find(stringId);
+                    //Log.write("Name:" + chara.Name);
+
+                    Banner bannerObj = (Banner)Traverse.Create(__instance).Field("_banner").GetValue();
+
+                    //ItemObject bannerItem = (ItemObject)Traverse.Create(__instance).Field("_bannerItem").GetValue();
+                    //Log.write("BannerItem:" + (bannerItem is object ? bannerItem.ToString() : "null") );
+
+                    (int mode, uint? c1, uint? c2, string newbanner, string newshield) = getColorFromConfig(ref bannerObj, chara.Name.ToString(), chara.IsHero, chara.IsMounted, chara.IsRanged, chara.Tier, chara.Culture.Name.ToString() );
+
+					//save shield value
+                    __state = newshield;
+
+					//set banner value
+                    __instance.SetBannerCode(newbanner);
+					if (c1 is object)
+					{
+						__instance.SetArmorColor1(c1.Value);
+					}
+					if (c2 is object)
+					{
+                        __instance.SetArmorColor2(c2.Value);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log.write("Error caught:" + e.Message);
+                }
+                return true;
+            }
+
+			public static void Postfix(ref CharacterTableau __instance, ref string __state)
+			{
+                //Restore the banner with the shield value
+                __instance.SetBannerCode(__state);
+            }
+
+
+        }
+
+        [HarmonyPatch(typeof(PartyVisual), "AddCharacterToPartyIcon")]
 		internal class PocColorModPartyVisual
 		{
 			public static bool Prefix(CharacterObject characterObject, ref string bannerKey, ref uint teamColor1, ref uint teamColor2)
 			{
 				try
 				{
-					//There is a serialize in code that mess bannerKey: so we reset it correctly
-					Banner banner = characterObject?.HeroObject?.ClanBanner;
+                    //Log.write("PartyVisual AddCharacterToPartyIcon");
+
+                    //There is a serialize in code that mess bannerKey: so we reset it correctly
+                    Banner banner = characterObject?.HeroObject?.ClanBanner;
 					if (banner is object)
 					{
 						bannerKey = PocColorMod.SerializeBanner(banner);
 						string charName = characterObject?.Name.ToString();
 						updateCache(bannerKey, charName);
 
-						//Log.write("PartyVisual AddCharacterToPartyIcon:" + charName);
+                        //Log.write("PartyVisual AddCharacterToPartyIcon:" + charName);
+                        //Log.write("AddCharacterToPartyIcon, char: " + characterObject.Name.ToString() + ", mounted:" + characterObject.IsMounted + ", ranged:" + characterObject.IsRanged + " , tier: " + characterObject.Tier + " , culture:" + characterObject.Culture.Name.ToString());
 
-						(int mode, uint? c1, uint? c2, string newbanner, string newshield) = getColorFromConfig(ref bannerKey, charName, characterObject.IsHero);
+                        (int mode, uint? c1, uint? c2, string newbanner, string newshield) = getColorFromConfig(ref bannerKey, charName, characterObject.IsHero, characterObject.IsMounted, characterObject.IsRanged, characterObject.Tier, characterObject.Culture.Name.ToString());
 
 						if (newshield is object)
 						{
@@ -1647,7 +1785,10 @@ namespace PocColor
 					string bannerKey = PocColorMod.SerializeBanner(__instance.Party.LeaderHero?.ClanBanner);
 					string charName = __instance.Party.LeaderHero.Name.ToString();
 
-					string newshield = getIconFromConfig(ref bannerKey, charName, true);
+					CharacterObject chara = __instance.Party.LeaderHero.CharacterObject;
+                    //Log.write("PartyBanner, char: " + charName + ", mounted:" + chara.IsMounted + ", ranged:" + chara.IsRanged + " , tier: " + chara.Tier + " , culture:" + chara.Culture.Name.ToString());
+
+                    string newshield = getIconFromConfig(ref bannerKey, charName, true, chara.IsMounted, chara.IsRanged, chara.Tier, chara.Culture.Name.ToString());
 					value = new ImageIdentifierVM(BannerCode.CreateFrom(newshield), true);
 				}
 				return true;
@@ -1661,7 +1802,9 @@ namespace PocColor
 			{
 				try
 				{
-					if (PocColorMod.config is null)
+                    //Log.write("Clan UpdateBannerColorsAccordingToKingdom PRE");
+
+                    if (PocColorMod.config is null)
 					{
 						return true;
 					}
@@ -1680,8 +1823,9 @@ namespace PocColor
 
 				try
 				{
+                    //Log.write("Clan UpdateBannerColorsAccordingToKingdom POST");
 
-					if (PocColorMod.config is null)
+                    if (PocColorMod.config is null)
 					{	
 						return;
 					}
@@ -1797,10 +1941,10 @@ namespace PocColor
 			}
 		}
 
-		[HarmonyPatch(typeof(MBBannerEditorGauntletScreen), "OnDone")]
+		[HarmonyPatch(typeof(GauntletBannerEditorScreen), "OnDone")]
 		internal class BannerEditorGauntletScreen_OnDone
 		{
-			private static void Postfix(ref MBBannerEditorGauntletScreen __instance)
+			private static void Postfix(ref GauntletBannerEditorScreen __instance)
 			{
 				try
 				{

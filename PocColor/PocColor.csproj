@@ -205,6 +205,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Config\ConfigSectionCulture.cs" />
+    <Compile Include="Config\ConfigSectionTier.cs" />
+    <Compile Include="Config\ConfigSectionUnit.cs" />
+    <Compile Include="Config\UnitsContainerSection.cs" />
+    <Compile Include="Config\ConfigSection.cs" />
     <Compile Include="Config\PocColorModGroupEntry.cs" />
     <Compile Include="Config\PocColorModConfigColorEntry.cs" />
     <Compile Include="Log.cs" />
