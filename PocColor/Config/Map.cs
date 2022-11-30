@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -49,6 +50,18 @@ namespace PocColor.Config
                     else
                         base[key] = value;
                 }
+            }
+
+            public override String ToString()
+            {
+                String output = "[";
+                foreach (KeyValuePair<TKey, TValue> kvp in this)
+                {
+                    output += string.Format("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
+                    output += ", ";
+                }
+                output += "]";
+                return output;
             }
         }
     }

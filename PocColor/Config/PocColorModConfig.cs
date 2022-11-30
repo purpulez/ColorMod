@@ -12,6 +12,8 @@ using TaleWorlds.Engine.GauntletUI;
 using TaleWorlds.Library;
 using System.Text.RegularExpressions;
 using System.Reflection;
+using Newtonsoft.Json.Linq;
+using TaleWorlds.InputSystem;
 
 namespace PocColor.Config
 {
@@ -436,7 +438,7 @@ namespace PocColor.Config
                 //KingdomClanUnit
                 
                 (kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig) = getConfigScopes(kConfig, kcConfig, kuConfig, kcuConfig, cConfig, cuConfig, uConfig, kingdom, clan, unit, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero, isMounted, isRanged, tier, culture);
-                
+
                 Map<String, string[]>[] vars = this.defaultConfig?.vars ?? null;
                 vars = kConfig?.vars ?? vars;
                 vars = cConfig?.vars ?? vars;
@@ -500,15 +502,16 @@ namespace PocColor.Config
 
                 string[] combatShields;
                 string[] combatBanners;
-                
+
+
                 (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseUnitsDetails(uConfig, isMounted, isRanged, tier, culture, vars, mode, color, color2, banner, shields, banners, null, null);
-                
+
                 (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseUnitsDetails(kuConfig, isMounted, isRanged, tier, culture, vars, mode, color, color2, banner, shields, banners, null, null);
-                
+
                 (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseUnitsDetails(cuConfig, isMounted, isRanged, tier, culture, vars, mode, color, color2, banner, shields, banners, null, null);
-                
+
                 (vars, mode, color, color2, banner, shields, banners, combatShields, combatBanners) = parseUnitsDetails(kcuConfig, isMounted, isRanged, tier, culture, vars, mode, color, color2, banner, shields, banners, null, null);
-                
+
                 if (!String.IsNullOrEmpty(banner) && (banners != null) && banners.Length > 0)
                 {
                     bannersFull = new string[banners.Length + 1];
@@ -565,12 +568,11 @@ namespace PocColor.Config
             //Parse Cultures
             if (unitsConfig.cultures is object && culture is object)
             {
-               (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseCriteria(unitsConfig.cultures[culture], vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
+                (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseCriteria(unitsConfig.cultures[culture], vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
             }
-            
             //Types 
             (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseTypeCriteria(unitsConfig, isMounted, isRanged, vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
-           
+
             //Parse Tiers
             if (unitsConfig.tiers is object) 
             {
@@ -581,14 +583,19 @@ namespace PocColor.Config
             {
                 //Parse Cultures.Types
                 (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseTypeCriteria(unitsConfig.cultures[culture], isMounted, isRanged, vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
-                
+
                 //Parse Cultures.Tiers
-                (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseCriteria(unitsConfig.cultures[culture].tiers[tier], vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
+                if (unitsConfig.cultures[culture].tiers is object)
+                {
+                    (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseCriteria(unitsConfig.cultures[culture].tiers[tier], vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
+                }
             }
+
             if (unitsConfig.tiers is object)
             {
                 (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseTypeCriteria(unitsConfig.tiers[tier], isMounted, isRanged, vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);        
             }
+
             if (unitsConfig.cultures is object && culture is object && unitsConfig.cultures[culture] is object)
             {
                 if (unitsConfig.cultures[culture].tiers is object)
@@ -596,6 +603,7 @@ namespace PocColor.Config
                     (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners) = parseTypeCriteria(unitsConfig.cultures[culture].tiers[tier], isMounted, isRanged, vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);          
                 }
             }
+            
             return (vars, mode, color, color2, banner, shields, banners, combatshields, combatbanners);
         }
 
