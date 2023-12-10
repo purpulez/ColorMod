@@ -255,7 +255,7 @@ namespace PocColor
 				}
 
 				bool isPlayerClan = (!string.IsNullOrEmpty(playerClanName) && clan == playerClanName) || (isPlayer && !string.IsNullOrEmpty(clan));
-				bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
+				bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom == playerKingdomName;
 
                 if (PocColorMod.doLog) Log.write("==> character is: [" + unitName + "] of clan [" + clan + "] of kingdom [" + kingdom + "] isPlayerKingdom [" + isPlayerKingdom + "] isPlayerClan [" + isPlayerClan + "] isPlayer [" + isPlayer + "] isKing [" + isKing + "] isLeader [" + isLeader + "] isHero [" + isHero + "] isMounted [" + isMounted + "] isRanged [" + isRanged + "] tier [" + tier + "] culture [" + culture + "]");
                 (int mode, string[] colors, string[] colors2, string[] banners, string[] shields ) = PocColorMod.config.GetConfig(kingdom, clan, unitName, isPlayerKingdom, isPlayerClan, isPlayer, isKing, isLeader, isHero, isMounted, isRanged, tier, culture);
@@ -368,7 +368,7 @@ namespace PocColor
             string playerClanName = Clan.PlayerClan?.Name?.ToString();
 			string playerKingdomName = Clan.PlayerClan?.Kingdom?.Name?.ToString();
 
-			bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
+			bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom == playerKingdomName;
 			bool isPlayerClan = (!string.IsNullOrEmpty(playerClanName) && clan == playerClanName) || (isPlayer && !string.IsNullOrEmpty(clan));
 
 			(success, successBG, a, shield, b, c) = PocColorMod.config.GetClanConfig(kingdom, clan, isPlayerKingdom, isPlayerClan);
@@ -463,7 +463,7 @@ namespace PocColor
 				}
 
 				bool isPlayerClan = (!string.IsNullOrEmpty(playerClanName) && clan == playerClanName) || (isPlayer && !string.IsNullOrEmpty(clan));
-				bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
+				bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom == playerKingdomName;
 
 				if (PocColorMod.doLog) Log.write("==> character is: [" + unitName + "] of clan [" + clan + "] of kingdom [" + kingdom + "] isPlayerKingdom [" + isPlayerKingdom + "] isPlayerClan [" + isPlayerClan + "] isPlayer [" + isPlayer + "] isKing [" + isKing + "] isLeader [" + isLeader + "] isHero [" + isHero + "] isMounted [" + isMounted + "] isRanged [" + isRanged + "] tier [" + tier + "] culture [" + culture + "]");
 
@@ -707,7 +707,7 @@ namespace PocColor
 				}
 
 				bool isPlayerClan = (!string.IsNullOrEmpty(playerClanName) && clan == playerClanName) || (isPlayer && !string.IsNullOrEmpty(clan));
-				bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
+				bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom == playerKingdomName;
 
                 if (PocColorMod.doLog) Log.write("==> character is: [" + unitName + "] of clan [" + clan + "] of kingdom [" + kingdom + "] isPlayerKingdom [" + isPlayerKingdom + "] isPlayerClan [" + isPlayerClan + "] isPlayer [" + isPlayer + "] isKing [" + isKing + "] isLeader [" + isLeader + "] isHero [" + isHero + "] isMounted [" + isMounted + "] isRanged [" + isRanged + "] tier [" + tier + "] culture [" + culture + "]");
 
@@ -3113,7 +3113,7 @@ namespace PocColor
 					string playerKingdomName = Clan.PlayerClan?.Kingdom?.Name?.ToString();
 
 					bool isPlayerClan = (!string.IsNullOrEmpty(playerClanName) && __instance.Name?.ToString() == playerClanName);
-					bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom?.Name?.ToString() == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
+					bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom?.Name?.ToString() == playerKingdomName;
 
 					(bool follow, bool followBG, string clanBanner, string clanShield, string primary, string secondary) = PocColorMod.config.GetClanConfig(kingdom?.Name?.ToString(), __instance.Name?.ToString(), isPlayerKingdom, isPlayerClan);
 
@@ -3230,7 +3230,7 @@ namespace PocColor
 					string playerKingdomName = Clan.PlayerClan?.Kingdom?.Name?.ToString();
 
 					bool isPlayerClan = (!string.IsNullOrEmpty(playerClanName) && playerClan.Name?.ToString() == playerClanName);
-					bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom?.Name?.ToString() == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
+					bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom?.Name?.ToString() == playerKingdomName;
 
 					(bool follow, bool followBG, string clanBanner, string clanShield, string primary, string secondary) = PocColorMod.config.GetClanConfig(kingdom?.Name?.ToString(), playerClan.Name?.ToString(), isPlayerKingdom, isPlayerClan);
 					//Log.write("> clan: [" + playerClan.Name?.ToString() + "] follow: " + follow + ", primary: " + primary + ", secondary:" + secondary + ", clanbanner:" + clanBanner );

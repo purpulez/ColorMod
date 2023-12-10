@@ -19,7 +19,7 @@ namespace PocColor
     public class PocColorMod : MBSubModuleBase
     {
 
-        public const string MOD_VERSION = "1.1.2";
+        public const string MOD_VERSION = "1.1.5";
 
         public static PocColorModConfig config { get; set; }
 
@@ -137,7 +137,7 @@ namespace PocColor
 
                     //Get Kingdom Banner And Set It
                     string playerKingdomName = Clan.PlayerClan?.Kingdom?.Name?.ToString();
-                    bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom.Name?.ToString() == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
+                    bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom.Name?.ToString() == playerKingdomName;
 
                     (kingdomBannerStr, kingdomShieldStr, primary, secondary) = PocColorMod.config.GetKingdomConfig(kingdom.Name?.ToString(), isPlayerKingdom);
 
@@ -219,7 +219,7 @@ namespace PocColor
                         playerKingdomName = Clan.PlayerClan?.Kingdom?.Name?.ToString();
 
                         bool isPlayerClan = (!string.IsNullOrEmpty(playerClanName) && clan.Name?.ToString() == playerClanName);
-                        isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom.Name?.ToString() == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
+                        isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom.Name?.ToString() == playerKingdomName;
 
                         Log.write("> clan: [" + clan.Name?.ToString() + "] kingdom: " + kingdom.Name?.ToString() + ", isplayerKingdom: " + isPlayerKingdom + ", isPlayerClan:" + isPlayerClan);
                         (follow, followBG, clanBanner, clanShield, primary, secondary) = PocColorMod.config.GetClanConfig(kingdom.Name?.ToString(), clan.Name?.ToString(), isPlayerKingdom, isPlayerClan);
@@ -293,7 +293,7 @@ namespace PocColor
                     string playerClanName = Clan.PlayerClan?.Name?.ToString();
                     bool isPlayerClan = (!string.IsNullOrEmpty(playerClanName) && clan.Name?.ToString() == playerClanName);
                     string playerKingdomName = Clan.PlayerClan?.Kingdom?.Name?.ToString();
-                    bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom?.Name?.ToString() == playerKingdomName && Clan.PlayerClan.IsKingdomFaction;
+                    bool isPlayerKingdom = !string.IsNullOrEmpty(playerKingdomName) && kingdom?.Name?.ToString() == playerKingdomName;
 
                     Log.write("> clan: [" + clan.Name?.ToString() + "] kingdom: " + kingdom?.Name?.ToString() + ", isplayerKingdom: " + isPlayerKingdom + ", isPlayerClan:" + isPlayerClan);
                     (follow, followBG, clanBanner, clanShield, primary, secondary) = PocColorMod.config.GetClanConfig(kingdom?.Name?.ToString(), clan.Name?.ToString(), isPlayerKingdom, isPlayerClan);
